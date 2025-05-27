@@ -1,21 +1,30 @@
-/* globals.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Custom styles inspired by TGSRTC */
-.bg-primary {
-  background-color: #1e40af; /* Deep blue similar to TGSRTC */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
-.text-primary {
-  color: #1e40af;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
-.card {
-  @apply bg-white rounded-lg shadow-md p-4;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #0e0101;
+  }
 }
 
-.chart-container {
-  @apply w-full h-64; /* Fixed height for consistency */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
 }
