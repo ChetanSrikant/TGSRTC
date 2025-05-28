@@ -1,18 +1,42 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DataTable from './DataTable'; // Adjust path if needed
+
+// --- 1. Define the Transformation Function ---
+const transformResultsData = (resultsData) => {
+  if (!resultsData || !Array.isArray(resultsData)) {
+    return [];
+  }
+  const dataByDate = {};
+  resultsData.forEach(item => {
+    const key = item.key;
+    if (!item.table || !Array.isArray(item.table)) return;
+    item.table.forEach(row => {
+      const date = row["Date"];
+      const passengers = row["No of Passengers"];
+      if (!dataByDate[date]) {
+        dataByDate[date] = { "Date": date };
+      }
+      dataByDate[date][key] = passengers;
+    });
+  });
+  const transformedArray = Object.values(dataByDate);
+  transformedArray.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+  return transformedArray;
+};
+// --- End of Transformation Function ---
 
 export default function ForecastForm() {
   const [keys, setKeys] = useState([]);
   const [formData, setFormData] = useState({
     df_key: 'ALL',
-    start_date: '', // Initialize as empty, let useEffect set it
-    end_date: '',   // Initialize as empty, let useEffect set it
+    start_date: '',
+    end_date: '',
     forecast_days: 7
   });
   const [forecastResult, setForecastResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null); // Dedicated error state
+  const [error, setError] = useState(null);
 
   // Fetch available keys and default dates
   useEffect(() => {
@@ -21,7 +45,7 @@ export default function ForecastForm() {
         const response = await fetch('/api/forecast');
         if (!response.ok) throw new Error('Failed to fetch initial data');
         const data = await response.json();
-        setKeys(data.keys || []); // Ensure keys is an array
+        setKeys(data.keys || []);
         setFormData(prev => ({
           ...prev,
           start_date: formatDateForInput(data.default_start),
@@ -88,74 +112,83 @@ export default function ForecastForm() {
     }
   };
 
+  // --- 2. Use useMemo to Transform Data Efficiently ---
+  const combinedResultsTable = useMemo(() => {
+    if (forecastResult && forecastResult.results) {
+      return transformResultsData(forecastResult.results);
+    }
+    return null;
+  }, [forecastResult]);
+  // --- End of useMemo ---
+
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
         {/* Form Section */}
         <div className="md:col-span-1 bg-white p-6 rounded-lg shadow-sm border">
-            <h1 className="text-xl font-bold mb-6 text-gray-800">Forecast Parameters</h1>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Key</label>
-                <select
-                  name="df_key"
-                  value={formData.df_key}
-                  onChange={handleChange}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
-                >
-                  <option value="ALL">ALL</option>
-                  {keys.map(key => (
-                    <option key={key} value={key}>{key}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                <input
-                  type="date"
-                  name="start_date"
-                  value={formData.start_date}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border p-2"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">End Date</label>
-                <input
-                  type="date"
-                  name="end_date"
-                  value={formData.end_date}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border p-2"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Forecast Days</label>
-                <input
-                  type="number"
-                  name="forecast_days"
-                  value={formData.forecast_days}
-                  onChange={handleChange}
-                  min="1"
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border p-2"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300 transition duration-150"
+          <h1 className="text-xl font-bold mb-6 text-gray-800">Forecast Parameters</h1>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Key</label>
+              <select
+                name="df_key"
+                value={formData.df_key}
+                onChange={handleChange}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
               >
-                {loading ? 'Processing...' : 'Run Forecast'}
-              </button>
-            </form>
+                <option value="ALL">ALL</option>
+                {keys.map(key => (
+                  <option key={key} value={key}>{key}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Start Date</label>
+              <input
+                type="date"
+                name="start_date"
+                value={formData.start_date}
+                onChange={handleChange}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border p-2"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">End Date</label>
+              <input
+                type="date"
+                name="end_date"
+                value={formData.end_date}
+                onChange={handleChange}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border p-2"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Forecast Days</label>
+              <input
+                type="number"
+                name="forecast_days"
+                value={formData.forecast_days}
+                onChange={handleChange}
+                min="1"
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border p-2"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300 transition duration-150"
+            >
+              {loading ? 'Processing...' : 'Run Forecast'}
+            </button>
+          </form>
         </div>
 
         {/* Results Section */}
@@ -164,8 +197,7 @@ export default function ForecastForm() {
 
           {loading && (
             <div className="p-6 bg-white rounded-lg shadow-sm border text-center">
-                <p className="text-indigo-600">Loading forecast data, please wait...</p>
-                {/* You could add a spinner here */}
+              <p className="text-indigo-600">Loading forecast data, please wait...</p>
             </div>
           )}
 
@@ -178,30 +210,44 @@ export default function ForecastForm() {
 
           {!loading && !error && forecastResult && (
             <div className="space-y-6">
-              {/* Display the three tables */}
+              {/* Display the first two tables as before */}
               <DataTable title="Combined Table" data={forecastResult.combined_table} />
               <DataTable title="Grouped Summary Table" data={forecastResult.grouped_summary_table} />
-              <DataTable title="Results" data={forecastResult.results} />
 
-               {/* You can still show the raw JSON if needed */}
-               {/*
-               <div className="mt-6">
-                 <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
-                 <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
-                   {JSON.stringify(forecastResult, null, 2)}
-                 </pre>
-               </div>
-               */}
+              {/* --- THIS IS THE CHANGED PART --- */}
+              {/* We now render ONE table using the combinedResultsTable data */}
+              {combinedResultsTable && combinedResultsTable.length > 0 ? (
+                <DataTable
+                  title="Results"
+                  data={combinedResultsTable}
+                />
+              ) : (
+                <p className="text-gray-500">No detailed results data available for combining.</p>
+              )}
+              {/* --- END OF CHANGED PART --- */}
+
+              {/* Raw JSON (optional) */}
+              {/* <div className="mt-6">
+                <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
+                <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
+                  {JSON.stringify(forecastResult, null, 2)}
+                </pre>
+              </div> */}
             </div>
           )}
 
           {!loading && !error && !forecastResult && (
-             <div className="p-6 bg-white rounded-lg shadow-sm border text-center">
-                <p className="text-gray-500">Submit the form to see the forecast results here.</p>
+            <div className="p-6 bg-white rounded-lg shadow-sm border text-center">
+              <p className="text-gray-500">Submit the form to see the forecast results here.</p>
             </div>
           )}
         </div>
+        {/* --- End of Results Section --- */}
+
       </div>
     </div>
   );
 }
+
+// --- 4. Your DataTable Component (No changes needed) ---
+// Make sure this component exists and handles rendering null/undefined as empty cells.
