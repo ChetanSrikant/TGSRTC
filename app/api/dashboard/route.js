@@ -1,100 +1,105 @@
-import { pool } from '@/lib/db'; // Make sure this path is correct
+import { pool } from '@/lib/db';
 
 export async function GET(request) {
-  // We no longer read start/end dates from the URL.
+  const { searchParams } = new URL(request.url);
+  const startDate = searchParams.get('start') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
+
+  console.log('API Request - Start Date:', startDate);
+  console.log('API Request - End Date:', endDate);
+
   let connection;
   try {
     connection = await pool.getConnection();
 
-    // 1. Get statistics (entire dataset)
-    const [statsResult] = await connection.query(`
+    // 1. Get statistics - using only columns that exist
+    const [stats] = await connection.query(`
       SELECT 
         COUNT(*) as total_trips,
-        AVG(trip_kms) as avg_distance
+        AVG(trip_kms) as avg_distance,
+        route_code as popular_route
       FROM wl_upl_nov24
-    `);
-    const [popularRouteResult] = await connection.query(`
-      SELECT route_code
-      FROM wl_upl_nov24
+      WHERE in_date BETWEEN ? AND ?
       GROUP BY route_code
       ORDER BY COUNT(*) DESC
       LIMIT 1
-    `);
-    const stats = [{
-        ...statsResult[0],
-        popular_route: popularRouteResult[0]?.route_code || "N/A"
-    }];
+    `, [startDate, endDate]);
 
-
-    // 2. Daily trips data (entire dataset)
-    // Using DATE() based on your working example, assuming 'in_date' is a date/datetime or a parsable string.
+    // 2. Daily trips data
     const [dailyTrips] = await connection.query(`
       SELECT 
-        DATE_FORMAT(DATE(in_date), '%Y-%m-%d') as date,
+        DATE_FORMAT(STR_TO_DATE(in_date, '%d%m%Y'), '%Y-%m-%d') as date,
         COUNT(*) as count
       FROM wl_upl_nov24
+      WHERE STR_TO_DATE(in_date, '%d%m%Y') BETWEEN ? AND ?
       GROUP BY date
       ORDER BY date
-    `);
+    `, [startDate, endDate]);
 
-    // 3. Service type distribution (entire dataset)
+    // 3. Service type distribution
     const [serviceTypes] = await connection.query(`
       SELECT 
         service_type as label,
         COUNT(*) as value
       FROM wl_upl_nov24
+      WHERE STR_TO_DATE(in_date, '%d%m%Y') BETWEEN ? AND ?
       GROUP BY service_type
-    `);
+    `, [startDate, endDate]);
 
-    // 4. Top routes (entire dataset, limited to 5)
+    // 4. Top routes
     const [topRoutes] = await connection.query(`
       SELECT 
         route_code as label,
         COUNT(*) as value
       FROM wl_upl_nov24
+      WHERE in_date BETWEEN ? AND ?
       GROUP BY route_code
       ORDER BY COUNT(*) DESC
       LIMIT 5
-    `);
+    `, [startDate, endDate]);
 
-    // 5. Ticket types (entire dataset)
+    // 5. Ticket types
     const [ticketTypes] = await connection.query(`
       SELECT 
         ticket_type as label,
         COUNT(*) as value
       FROM wl_upl_nov24
+      WHERE in_date BETWEEN ? AND ?
       GROUP BY ticket_type
-    `);
+    `, [startDate, endDate]);
 
-    // 6. Trip directions (entire dataset)
+    // 6. Trip directions
     const [tripDirections] = await connection.query(`
       SELECT 
         trip_direction as label,
         COUNT(*) as value
       FROM wl_upl_nov24
+      WHERE in_date BETWEEN ? AND ?
       GROUP BY trip_direction
-    `);
+    `, [startDate, endDate]);
 
-    // 7. Time distribution (entire dataset)
+    // 7. Time distribution (using tkt_issuetime)
     const [timeDistribution] = await connection.query(`
       SELECT 
         HOUR(tkt_issuetime) as hour,
         COUNT(*) as count
       FROM wl_upl_nov24
+      WHERE in_date BETWEEN ? AND ?
       GROUP BY HOUR(tkt_issuetime)
       ORDER BY hour
-    `);
+    `, [startDate, endDate]);
 
-    // 8. Depot performance (entire dataset)
+    // 8. Depot performance
     const [depotPerformance] = await connection.query(`
       SELECT 
         depot_name as label,
         COUNT(*) as trips
       FROM wl_upl_nov24
+      WHERE in_date BETWEEN ? AND ?
       GROUP BY depot_name
-    `);
+    `, [startDate, endDate]);
 
-    // 9. Distance coverage (entire dataset)
+    // 9. Distance coverage
     const [distanceCoverage] = await connection.query(`
       SELECT 
         CASE
@@ -105,12 +110,13 @@ export async function GET(request) {
         END as \`range\`,
         COUNT(*) as count
       FROM wl_upl_nov24
+      WHERE in_date BETWEEN ? AND ?
       GROUP BY \`range\`
-    `);
+    `, [startDate, endDate]);
 
-    // Additional Queries (already unfiltered)
+    // Additional Queries
     const [totalCount] = await connection.query(`SELECT COUNT(*) as count FROM wl_upl_nov24`);
-    const [minMaxDate] = await connection.query(`SELECT MIN(DATE(in_date)) as min_date, MAX(DATE(in_date)) as max_date FROM wl_upl_nov24`);
+    const [minMaxDate] = await connection.query(`SELECT MIN(in_date) as min_date, MAX(in_date) as max_date FROM wl_upl_nov24`);
 
     return Response.json({
       stats: [
@@ -118,7 +124,7 @@ export async function GET(request) {
           title: "Total Trips",
           value: stats[0]?.total_trips || 0,
           icon: "🚌",
-          trend: "Overall"
+          trend: "Daily average"
         },
         {
           title: "Avg Distance",
@@ -136,7 +142,7 @@ export async function GET(request) {
           title: "Total Tickets",
           value: stats[0]?.total_trips || 0, // Using trip count as proxy
           icon: "🎫",
-          trend: "Overall"
+          trend: "Daily average"
         }
       ],
       dailyTrips: {
@@ -153,9 +159,9 @@ export async function GET(request) {
         datasets: [{
           data: serviceTypes.map(item => item.value),
           backgroundColor: [
-            'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)',
-            'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)',
-            'rgba(153, 102, 255, 0.7)'
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 206, 86, 0.7)',
           ],
         }]
       },
@@ -172,8 +178,9 @@ export async function GET(request) {
         datasets: [{
           data: ticketTypes.map(item => item.value),
           backgroundColor: [
-            'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)',
-            'rgba(201, 203, 207, 0.7)', 'rgba(255, 99, 132, 0.7)'
+            'rgba(153, 102, 255, 0.7)',
+            'rgba(255, 159, 64, 0.7)',
+            'rgba(201, 203, 207, 0.7)',
           ],
         }]
       },
@@ -181,7 +188,10 @@ export async function GET(request) {
         labels: tripDirections.map(item => item.label),
         datasets: [{
           data: tripDirections.map(item => item.value),
-          backgroundColor: [ 'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)' ],
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+          ],
         }]
       },
       timeDistribution: {
@@ -206,8 +216,10 @@ export async function GET(request) {
         datasets: [{
           data: distanceCoverage.map(item => item.count),
           backgroundColor: [
-            'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)',
-            'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)',
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 206, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
           ],
         }]
       },
@@ -228,35 +240,3 @@ export async function GET(request) {
     if (connection) connection.release();
   }
 }
-
-// Client-side code (e.g., in a React component)
-useEffect(() => {
-  const fetchData = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const apiUrl = '/api/dashboard'; // No date params needed
-      console.log('Fetching from:', apiUrl);
-
-      const res = await fetch(apiUrl, {
-        next: { revalidate: 3600 }
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
-      }
-
-      const data = await res.json();
-      console.log('Received data:', data); // This will now show all data
-      setDashboardData(data);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  fetchData();
-}, []); // Still runs only once on mount

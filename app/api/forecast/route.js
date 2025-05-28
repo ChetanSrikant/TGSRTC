@@ -1,6 +1,6 @@
 export async function GET() {
-  // Fetch keys from your external API
-  const res = await fetch('https://7e20-49-37-152-74.ngrok-free.app/api/keys');
+  // Fetch keys from your new external API
+  const res = await fetch('https://33e7-2405-201-c034-18b1-f428-57b3-398e-5b6c.ngrok-free.app/api/keys');
   const data = await res.json();
   
   return Response.json(data);
@@ -9,8 +9,8 @@ export async function GET() {
 export async function POST(request) {
   const body = await request.json();
   
-  // Forward request to external API
-  const res = await fetch('https://7e20-49-37-152-74.ngrok-free.app/api/forecast', {
+  // Forward request to new external API
+  const res = await fetch('https://33e7-2405-201-c034-18b1-f428-57b3-398e-5b6c.ngrok-free.app/api/forecast', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)

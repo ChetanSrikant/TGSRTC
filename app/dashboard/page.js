@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import NavBar from './components/NavBar'; // Ensure this path is correct
-import StatCards from './components/StatCards'; // Ensure this path is correct
-import BarChart from './components/charts/BarChart'; // Ensure this path is correct
-import LineChart from './components/charts/LineChart'; // Ensure this path is correct
-import PieChart from './components/charts/PieChart'; // Ensure this path is correct
-import LoadingSpinner from './components/LoadingSpinner'; // Ensure this path is correct
-import ChartWrapper from './components/charts/ChartWrapper'; // Ensure this path is correct
+import NavBar from './components/NavBar';
+import StatCards from './components/StatCards';
+import BarChart from './components/charts/BarChart';
+import LineChart from './components/charts/LineChart';
+import PieChart from './components/charts/PieChart';
+import LoadingSpinner from './components/LoadingSpinner';
+import ChartWrapper from './components/charts/ChartWrapper'; // Add this import
 
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
@@ -20,16 +20,15 @@ export default function Dashboard() {
       setError(null);
 
       try {
-        const apiUrl = '/api/dashboard'; // Fetches from our updated API
+        const apiUrl = '/api/dashboard';
         console.log('Fetching from:', apiUrl);
 
         const res = await fetch(apiUrl, {
-          next: { revalidate: 3600 } // Or adjust caching as needed
+          next: { revalidate: 3600 }
         });
 
         if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(`Failed to fetch: ${res.status} ${res.statusText} - ${errData.error || 'Unknown error'}`);
+          throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
         }
 
         const data = await res.json();
@@ -44,7 +43,7 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, []); // Runs once on mount
+  }, []); // Empty dependency array means this runs once on mount
 
   if (isLoading) {
     return (
@@ -84,16 +83,20 @@ export default function Dashboard() {
         <div className="p-6 max-w-7xl mx-auto">
           <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
             <p className="font-bold">No Data Available</p>
-            <p>Could not retrieve dashboard data. Please try again later.</p>
+            <p>Please try again later.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Destructure with defaults to prevent errors if API response is partial
   const {
-    stats = [],
+    stats = [
+      { title: "Total Trips", value: 0, icon: "🚌", trend: "N/A" },
+      { title: "Passengers", value: 0, icon: "👥", trend: "N/A" },
+      { title: "Avg Distance", value: "0 km", icon: "📍", trend: "N/A" },
+      { title: "Popular Route", value: "N/A", icon: "🛣️", trend: "N/A" }
+    ],
     dailyTrips = { labels: [], datasets: [] },
     serviceTypes = { labels: [], datasets: [] },
     topRoutes = { labels: [], datasets: [] },
@@ -118,35 +121,35 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
           <ChartWrapper title="Daily Trips">
-            {dailyTrips?.labels?.length > 0 ? <LineChart data={dailyTrips} /> : <p>No data</p>}
+            {dailyTrips?.labels?.length > 0 && <LineChart data={dailyTrips} />}
           </ChartWrapper>
 
           <ChartWrapper title="Service Types">
-            {serviceTypes?.labels?.length > 0 ? <PieChart data={serviceTypes} /> : <p>No data</p>}
+            {serviceTypes?.labels?.length > 0 && <PieChart data={serviceTypes} />}
           </ChartWrapper>
 
           <ChartWrapper title="Top Routes">
-            {topRoutes?.labels?.length > 0 ? <BarChart data={topRoutes} /> : <p>No data</p>}
+            {topRoutes?.labels?.length > 0 && <BarChart data={topRoutes} />}
           </ChartWrapper>
 
           <ChartWrapper title="Ticket Types">
-            {ticketTypes?.labels?.length > 0 ? <PieChart data={ticketTypes} /> : <p>No data</p>}
+            {ticketTypes?.labels?.length > 0 && <PieChart data={ticketTypes} />}
           </ChartWrapper>
 
           <ChartWrapper title="Trip Directions">
-            {tripDirections?.labels?.length > 0 ? <PieChart data={tripDirections} /> : <p>No data</p>}
+            {tripDirections?.labels?.length > 0 && <PieChart data={tripDirections} />}
           </ChartWrapper>
 
           <ChartWrapper title="Passenger Flow by Hour">
-            {timeDistribution?.labels?.length > 0 ? <LineChart data={timeDistribution} /> : <p>No data</p>}
+            {timeDistribution?.labels?.length > 0 && <LineChart data={timeDistribution} />}
           </ChartWrapper>
 
           <ChartWrapper title="Depot Performance">
-            {depotPerformance?.labels?.length > 0 ? <BarChart data={depotPerformance} /> : <p>No data</p>}
+            {depotPerformance?.labels?.length > 0 && <BarChart data={depotPerformance} />}
           </ChartWrapper>
 
           <ChartWrapper title="Distance Coverage">
-            {distanceCoverage?.labels?.length > 0 ? <PieChart data={distanceCoverage} /> : <p>No data</p>}
+            {distanceCoverage?.labels?.length > 0 && <PieChart data={distanceCoverage} />}
           </ChartWrapper>
         </div>
 
