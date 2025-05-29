@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import DataTable from './DataTable'; // Adjust path if needed
+import LineChartComponent from './LineChartComponent'; // Adjust path as needed
 
 // --- 1. Define the Transformation Function ---
 const transformResultsData = (resultsData) => {
@@ -227,12 +228,12 @@ export default function ForecastForm() {
               {/* --- END OF CHANGED PART --- */}
 
               {/* Raw JSON (optional) */}
-              {/* <div className="mt-6">
+              <div className="mt-6">
                 <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
                 <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
                   {JSON.stringify(forecastResult, null, 2)}
                 </pre>
-              </div> */}
+              </div>
             </div>
           )}
 
@@ -243,6 +244,14 @@ export default function ForecastForm() {
           )}
         </div>
         {/* --- End of Results Section --- */}
+
+        {combinedResultsTable && combinedResultsTable.length > 0 && (
+  <>
+    <LineChartComponent data={combinedResultsTable} />
+    <DataTable title="Results" data={combinedResultsTable} />
+  </>
+)}
+
 
       </div>
     </div>
