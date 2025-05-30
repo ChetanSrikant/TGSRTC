@@ -1,8 +1,30 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import DataTable from './DataTable'; // Adjust path if needed
-// import LineChartComponent from './LineChartComponent'; // Adjust path as needed
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  PointElement,
+  LineElement
+} from 'chart.js';
+import { Bar, Line } from 'react-chartjs-2';
 
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 // --- 1. Existing Transformation Function (for the third table, "Results") ---
 const transformResultsData = (resultsData) => {
   if (!resultsData || !Array.isArray(resultsData)) {
@@ -263,13 +285,87 @@ export default function ForecastForm() {
                   <p className="text-gray-500">No detailed results data available for combining.</p> : null
               )}
 
-              {/* Raw JSON (optional) */}
-              <div className="mt-6">
+              {/* New Bar Chart for Bus Types Comparison */}
+              {processedCombinedTableData.length > 0 && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border">
+                  <h3 className="text-lg font-medium mb-4">Bus Types Comparison</h3>
+                  <div className="h-80">
+                    <Bar
+                      data={{
+                        labels: processedCombinedTableData.map(item => item.Date),
+                        datasets: [
+                          {
+                            label: 'Buses_0_',
+                            data: processedCombinedTableData.map(item => item.Buses_0_ || 0),
+                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                          },
+                          {
+                            label: 'Buses_CO',
+                            data: processedCombinedTableData.map(item => item.Buses_CO || 0),
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                          },
+                          {
+                            label: 'Buses_ME',
+                            data: processedCombinedTableData.map(item => item.Buses_ME || 0),
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                          }
+                        ]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                          x: {
+                            stacked: false,
+                            ticks: {
+                              callback: function(value, index, ticks) {
+                                // Format the date to show only "Wed, 01 Jan 2025"
+                                // value is the label (date string) from labels array
+                                const dateStr = this.getLabelForValue ? this.getLabelForValue(value) : value;
+                                const date = new Date(dateStr);
+                                if (isNaN(date.getTime())) return dateStr;
+                                return date.toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric'
+                                });
+                              }
+                            }
+                          },
+                          y: {
+                            stacked: false,
+                            beginAtZero: true
+                          }
+                        },
+                        plugins: {
+                          legend: {
+                            position: 'top',
+                          },
+                          title: {
+                            display: true,
+                            text: 'Daily Bus Types Comparison',
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Raw JSON (keep this as is) */}
+              {/* <div className="mt-6">
                 <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
                 <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
                   {JSON.stringify(forecastResult, null, 2)}
                 </pre>
-              </div>
+              </div> */}
             </div>
           )}
 
