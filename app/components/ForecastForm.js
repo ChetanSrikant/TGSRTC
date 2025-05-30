@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import DataTable from './DataTable'; // Adjust path if needed
-import LineChartComponent from './LineChartComponent'; // Adjust path as needed
+// import LineChartComponent from './LineChartComponent'; // Adjust path as needed
 
-// --- 1. Define the Transformation Function ---
+// --- 1. Existing Transformation Function (for the third table, "Results") ---
 const transformResultsData = (resultsData) => {
   if (!resultsData || !Array.isArray(resultsData)) {
     return [];
@@ -25,7 +25,43 @@ const transformResultsData = (resultsData) => {
   transformedArray.sort((a, b) => new Date(a.Date) - new Date(b.Date));
   return transformedArray;
 };
-// --- End of Transformation Function ---
+// --- End of Existing Transformation Function ---
+
+// +++ START OF NEW CODE FOR FIRST TABLE TRANSFORMATION +++
+// --- Transformation Function for the "Combined Table" (First Table) ---
+const transformCombinedTableData = (data) => {
+  if (!data || !Array.isArray(data)) {
+    return []; // Return empty array if data is not as expected
+  }
+
+  const desiredKeys = [
+    "Date",
+    "Buses_0_",
+    "Buses_CO",
+    "Buses_Grand_Total",
+    "Buses_ME",
+    "Total_0_",
+    "Total_CO",
+    "Total_ME",
+    "Grand Total"
+  ];
+
+  return data.map(originalObject => {
+    const newObject = {};
+    desiredKeys.forEach(key => {
+      // Only add the key if it exists in the original object
+      // If a key from desiredKeys is missing, it won't be in newObject.
+      // The DataTable component will likely render an empty cell for it.
+      if (originalObject.hasOwnProperty(key)) {
+        newObject[key] = originalObject[key];
+      }
+    });
+    return newObject;
+  });
+};
+// --- End of New Transformation Function ---
+// +++ END OF NEW CODE FOR FIRST TABLE TRANSFORMATION +++
+
 
 export default function ForecastForm() {
   const [keys, setKeys] = useState([]);
@@ -39,7 +75,6 @@ export default function ForecastForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch available keys and default dates
   useEffect(() => {
     const fetchKeys = async () => {
       try {
@@ -60,18 +95,17 @@ export default function ForecastForm() {
     fetchKeys();
   }, []);
 
-  // Helper to format date for <input type="date">
   const formatDateForInput = (dateString) => {
     if (!dateString) return '';
     try {
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString; // Fallback
+        if (isNaN(date.getTime())) return dateString;
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     } catch(e) {
-        return dateString; // Fallback on parsing error
+        return dateString;
     }
   };
 
@@ -86,44 +120,49 @@ export default function ForecastForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setForecastResult(null); // Clear previous results
-    setError(null);         // Clear previous errors
+    setForecastResult(null);
+    setError(null);
 
     try {
       const response = await fetch('/api/forecast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData) // Send formData directly (ensure API handles yyyy-mm-dd)
+        body: JSON.stringify(formData)
       });
-
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.error || `HTTP error! status: ${response.status}`);
       }
-
       setForecastResult(result);
-
     } catch (error) {
       console.error('Error fetching forecast:', error);
       setError(error.message || 'Failed to fetch forecast data');
-      setForecastResult(null); // Ensure no results show on error
+      setForecastResult(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- 2. Use useMemo to Transform Data Efficiently ---
-  const combinedResultsTable = useMemo(() => {
+  // --- Memoize transformation for the "Combined Table" (First Table) ---
+  const processedCombinedTableData = useMemo(() => {
+    if (forecastResult && Array.isArray(forecastResult.combined_table)) {
+      return transformCombinedTableData(forecastResult.combined_table);
+    }
+    return []; // Return an empty array if data is not available or not an array
+  }, [forecastResult]);
+  // --- End of memoization for the first table ---
+
+  // --- Memoize transformation for the "Results" table (Third Table) ---
+  const combinedResultsTable = useMemo(() => { // This was your existing one
     if (forecastResult && forecastResult.results) {
       return transformResultsData(forecastResult.results);
     }
-    return null;
+    return null; // Or [] if DataTable prefers an array
   }, [forecastResult]);
   // --- End of useMemo ---
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
+    <div className=" mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
         {/* Form Section */}
@@ -144,7 +183,6 @@ export default function ForecastForm() {
                 ))}
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">Start Date</label>
               <input
@@ -156,7 +194,6 @@ export default function ForecastForm() {
                 required
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">End Date</label>
               <input
@@ -168,7 +205,6 @@ export default function ForecastForm() {
                 required
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">Forecast Days</label>
               <input
@@ -181,7 +217,6 @@ export default function ForecastForm() {
                 required
               />
             </div>
-
             <button
               type="submit"
               disabled={loading}
@@ -211,21 +246,22 @@ export default function ForecastForm() {
 
           {!loading && !error && forecastResult && (
             <div className="space-y-6">
-              {/* Display the first two tables as before */}
-              <DataTable title="Combined Table" data={forecastResult.combined_table} />
+              {/* --- MODIFIED: Use processedCombinedTableData for the first table --- */}
+              <DataTable title="Combined Table" data={processedCombinedTableData} />
+              {/* --- END OF MODIFICATION --- */}
+
               <DataTable title="Grouped Summary Table" data={forecastResult.grouped_summary_table} />
 
-              {/* --- THIS IS THE CHANGED PART --- */}
-              {/* We now render ONE table using the combinedResultsTable data */}
+              {/* This is for the third table, using your existing logic */}
               {combinedResultsTable && combinedResultsTable.length > 0 ? (
                 <DataTable
                   title="Results"
                   data={combinedResultsTable}
                 />
               ) : (
-                <p className="text-gray-500">No detailed results data available for combining.</p>
+                 forecastResult.results && forecastResult.results.length === 0 ? // Handle case where results exist but are empty
+                  <p className="text-gray-500">No detailed results data available for combining.</p> : null
               )}
-              {/* --- END OF CHANGED PART --- */}
 
               {/* Raw JSON (optional) */}
               <div className="mt-6">
@@ -244,19 +280,7 @@ export default function ForecastForm() {
           )}
         </div>
         {/* --- End of Results Section --- */}
-
-        {combinedResultsTable && combinedResultsTable.length > 0 && (
-  <>
-    <LineChartComponent data={combinedResultsTable} />
-    <DataTable title="Results" data={combinedResultsTable} />
-  </>
-)}
-
-
       </div>
     </div>
   );
 }
-
-// --- 4. Your DataTable Component (No changes needed) ---
-// Make sure this component exists and handles rendering null/undefined as empty cells.
