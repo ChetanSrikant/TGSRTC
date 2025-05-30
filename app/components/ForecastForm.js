@@ -186,7 +186,6 @@ export default function ForecastForm() {
   return (
     <div className=" mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-
         {/* Form Section */}
         <div className="md:col-span-1 bg-white p-6 rounded-lg shadow-sm border">
           <h1 className="text-xl font-bold mb-6 text-gray-800">Forecast Parameters</h1>
@@ -268,81 +267,115 @@ export default function ForecastForm() {
 
           {!loading && !error && forecastResult && (
             <div className="space-y-6">
-              {/* --- MODIFIED: Use processedCombinedTableData for the first table --- */}
-              <DataTable title="Combined Table" data={processedCombinedTableData} />
-              {/* --- END OF MODIFICATION --- */}
 
-              <DataTable title="Grouped Summary Table" data={forecastResult.grouped_summary_table} />
-
-              {/* This is for the third table, using your existing logic */}
               {combinedResultsTable && combinedResultsTable.length > 0 ? (
                 <DataTable
-                  title="Results"
+                  title="Number of passangers based on ticket type"
                   data={combinedResultsTable}
                 />
               ) : (
-                 forecastResult.results && forecastResult.results.length === 0 ? // Handle case where results exist but are empty
-                  <p className="text-gray-500">No detailed results data available for combining.</p> : null
+                forecastResult.results && forecastResult.results.length === 0 ? 
+                <p className="text-gray-500">No detailed results data available for combining.</p> : null
               )}
 
-              {/* New Bar Chart for Bus Types Comparison */}
+              <DataTable title="Number of passangers based on service type" data={forecastResult.grouped_summary_table} />
+
+              <DataTable title="Combined Table" data={processedCombinedTableData} />
+
+              {/* === MODIFIED CHART SECTION: Mixed Line and Bar Chart === */}
               {processedCombinedTableData.length > 0 && (
                 <div className="bg-white p-4 rounded-lg shadow-sm border">
-                  <h3 className="text-lg font-medium mb-4">Bus Types Comparison</h3>
-                  <div className="h-80">
-                    <Bar
+                  <h3 className="text-lg font-medium mb-4">Daily Bus Counts & Passenger Totals</h3>
+                  <div className="h-96">
+                    <Line
                       data={{
-                        labels: processedCombinedTableData.map(item => item.Date),
+                        labels: processedCombinedTableData.map(item => {
+                          const date = new Date(item.Date);
+                          return isNaN(date.getTime()) ? item.Date : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        }),
                         datasets: [
+                          // --- Line Datasets (Bus Counts) ---
                           {
+                            type: 'line',
                             label: 'Buses_0_',
                             data: processedCombinedTableData.map(item => item.Buses_0_ || 0),
-                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
                             borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: true,
+                            tension: 0.1,
+                            borderWidth: 2,
+                            yAxisID: 'yBuses',
+                            pointRadius: 2,
+                            pointHoverRadius: 4
                           },
                           {
+                            type: 'line',
                             label: 'Buses_CO',
                             data: processedCombinedTableData.map(item => item.Buses_CO || 0),
-                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
                             borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            fill: true,
+                            tension: 0.1,
+                            borderWidth: 2,
+                            yAxisID: 'yBuses',
+                            pointRadius: 2,
+                            pointHoverRadius: 4
                           },
                           {
+                            type: 'line',
                             label: 'Buses_ME',
                             data: processedCombinedTableData.map(item => item.Buses_ME || 0),
-                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
                             borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            fill: true,
+                            tension: 0.1,
+                            borderWidth: 2,
+                            yAxisID: 'yBuses',
+                            pointRadius: 2,
+                            pointHoverRadius: 4
+                          },
+                          // --- Bar Datasets (Passenger Totals) ---
+                          {
+                            type: 'bar',
+                            label: 'Total_0_ Passengers',
+                            data: processedCombinedTableData.map(item => item.Total_0_ || 0),
+                            backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'yPassengers',
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.6
+                          },
+                          {
+                            type: 'bar',
+                            label: 'Total_CO Passengers',
+                            data: processedCombinedTableData.map(item => item.Total_CO || 0),
+                            backgroundColor: 'rgba(100, 100, 255, 0.7)',
+                            borderColor: 'rgba(100, 100, 255, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'yPassengers',
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.6
+                          },
+                          {
+                            type: 'bar',
+                            label: 'Total_ME Passengers',
+                            data: processedCombinedTableData.map(item => item.Total_ME || 0),
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'yPassengers',
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.6
                           }
                         ]
                       }}
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: {
-                          x: {
-                            stacked: false,
-                            ticks: {
-                              callback: function(value, index, ticks) {
-                                // Format the date to show only "Wed, 01 Jan 2025"
-                                // value is the label (date string) from labels array
-                                const dateStr = this.getLabelForValue ? this.getLabelForValue(value) : value;
-                                const date = new Date(dateStr);
-                                if (isNaN(date.getTime())) return dateStr;
-                                return date.toLocaleDateString('en-US', {
-                                  weekday: 'short',
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric'
-                                });
-                              }
-                            }
-                          },
-                          y: {
-                            stacked: false,
-                            beginAtZero: true
-                          }
+                        interaction: {
+                          mode: 'index',
+                          intersect: false,
                         },
                         plugins: {
                           legend: {
@@ -350,32 +383,81 @@ export default function ForecastForm() {
                           },
                           title: {
                             display: true,
-                            text: 'Daily Bus Types Comparison',
+                            text: 'Daily Bus Counts and Passenger Totals',
                           },
+                          tooltip: {
+                            callbacks: {
+                              label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                  label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                  label += context.parsed.y;
+                                }
+                                return label;
+                              }
+                            }
+                          }
+                        },
+                        scales: {
+                          x: {
+                            // Labels are already formatted above
+                          },
+                          yBuses: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: 'Number of Buses',
+                              font: {
+                                size: 14
+                              }
+                            },
+                            grid: {
+                              drawOnChartArea: true,
+                            }
+                          },
+                          yPassengers: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: 'Number of Passengers',
+                              font: {
+                                size: 14
+                              }
+                            },
+                            grid: {
+                              drawOnChartArea: false,
+                            },
+                          }
                         },
                       }}
                     />
                   </div>
                 </div>
               )}
+              {/* === END OF MODIFIED CHART SECTION === */}
+              
+              {/* Raw JSON section ... (remains the same) */}
 
-              {/* Raw JSON (keep this as is) */}
               {/* <div className="mt-6">
                 <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
                 <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
                   {JSON.stringify(forecastResult, null, 2)}
                 </pre>
               </div> */}
+
             </div>
           )}
 
-          {!loading && !error && !forecastResult && (
-            <div className="p-6 bg-white rounded-lg shadow-sm border text-center">
-              <p className="text-gray-500">Submit the form to see the forecast results here.</p>
-            </div>
-          )}
+          {/* Fallback UI ... (remains the same) */}
         </div>
-        {/* --- End of Results Section --- */}
       </div>
     </div>
   );
