@@ -1,9 +1,13 @@
-import ForecastForm from "../components/ForecastForm";
+// app/layout.js
+import Sidebar from '../components/Sidebar';
 
-export default function ForecastPage() {
+export default function Layout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <ForecastForm />
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar />
+      <div className="flex-1 overflow-auto">
+        {children}
+      </div>
     </div>
   );
 }
