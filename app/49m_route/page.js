@@ -1,10 +1,10 @@
 // app/49m_route/page.js
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import DataTable from '../components/DataTable';
-import Sidebar from '../components/Sidebar';
+import DataTable from '../components/DataTable'; // Path should be relative to this file
+import Sidebar from '../components/Sidebar';   // Assuming Sidebar is in app/components/Sidebar.js
 
-// Helper: transforms the 'results' array into a date-keyed object array
+// This function transforms the 'results' array into a date-keyed object array
 const transformResultsData = (resultsData) => {
   if (!resultsData || !Array.isArray(resultsData)) {
     return [];
@@ -15,7 +15,7 @@ const transformResultsData = (resultsData) => {
     if (!item.table || !Array.isArray(item.table)) return;
     item.table.forEach(row => {
       const date = row["Date"];
-      const passengers = row["No Of Passengers"];
+      const passengers = row["No Of Passengers"]; // Key from your JSON example
       if (!dataByDate[date]) {
         dataByDate[date] = { "Date": date };
       }
@@ -27,6 +27,7 @@ const transformResultsData = (resultsData) => {
   return transformedArray;
 };
 
+// Helper function to generate table configurations dynamically
 const generateTableConfigs = (forecastResult) => {
   if (!forecastResult) return [];
   const configs = [];
@@ -55,9 +56,6 @@ const generateTableConfigs = (forecastResult) => {
 };
 
 export default function Page49m() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const toggleSidebar = () => setSidebarOpen(prev => !prev);
-
   const [keys, setKeys] = useState([]);
   const [formData, setFormData] = useState({
     df_key: 'ALL',
@@ -123,12 +121,14 @@ export default function Page49m() {
   }, [forecastResult]);
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <Sidebar sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+    <div className="flex min-h-screen bg-gray-100"> {/* Overall page container: flex row, min full height, light gray background */}
+      <Sidebar /> {/* Your Sidebar component. It should have its own width defined, e.g., w-64 */}
 
-      <main className={`transition-all duration-300 flex-grow p-6 bg-gray-50 overflow-y-auto ${sidebarOpen ? 'ml-0' : 'ml-0'}`}>
-        {/* Forecast Form */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
+      {/* Main content area */}
+      <main className="flex-grow p-6 flex flex-col bg-gray-50 overflow-y-auto"> {/* Takes remaining width, has padding, vertical flex for its children, slightly darker bg, and vertical scroll if needed */}
+        
+        {/* Horizontal Nav Bar Style Form */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6 flex-shrink-0"> {/* Form container should not shrink */}
           <h1 className="text-xl font-bold mb-4 text-gray-800">Forecast Parameters for 49m Route</h1>
           <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-4">
             <div className="min-w-[200px]">
@@ -171,9 +171,10 @@ export default function Page49m() {
           </form>
         </div>
 
-        {/* Forecast Results */}
-        <div>
+        {/* Results Section */}
+        <div className="flex-grow"> {/* Results container can grow to fill available vertical space in main content area */}
           <h2 className="text-xl font-bold mb-6 text-gray-800">Forecast Results</h2>
+
           {loading && (
             <div className="p-6 bg-white rounded-lg shadow-sm border text-center">
               <p className="text-indigo-600">Loading forecast data, please wait...</p>
@@ -199,14 +200,15 @@ export default function Page49m() {
             </div>
           )}
         </div>
+        {/* Optional Raw JSON display - kept commented out
+        <div className="mt-6 flex-shrink-0">
+           <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
+           <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
+             {JSON.stringify(forecastResult, null, 2)}
+           </pre>
+        </div>
+        */}
       </main>
-
-      {/* <div className="mt-6">Add commentMore actions
-        <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
-        <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
-          {JSON.stringify(forecastResult, null, 2)}
-        </pre>
-      </div> */}
     </div>
   );
 }
