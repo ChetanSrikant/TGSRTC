@@ -145,7 +145,7 @@ export default function PageKeys3() {
       <main className="flex-grow p-6 bg-gray-50 overflow-y-auto">
         {/* Forecast Form */}
         <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
-          <h1 className="text-xl font-bold mb-4 text-gray-800">Forecast Parameters (Keys3 Route)</h1>
+          <h1 className="text-xl font-bold mb-4 text-gray-800">OPRS route</h1>
           <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-4">
             <div className="min-w-[200px]">
               <label className="block text-sm font-medium text-gray-700 mb-1">Key</label>
