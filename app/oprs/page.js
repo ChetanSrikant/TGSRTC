@@ -188,6 +188,12 @@ export default function Page11m() {
             </div>
           )}
         </div>
+        {/* <div className="mt-6">Add commentMore actions
+          <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
+          <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
+            {JSON.stringify(forecastResult, null, 2)}
+          </pre>
+        </div> */}
       </main>
     </div>
   );
