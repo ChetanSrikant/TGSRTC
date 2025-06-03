@@ -19,4 +19,3 @@ export async function POST(request) {
   const data = await res.json();
   return Response.json(data);
 }
-

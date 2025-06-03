@@ -1,10 +1,8 @@
-// app/49m_route/page.js
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import DataTable from '../components/DataTable';
 import Sidebar from '../components/Sidebar';
 
-// Helper: transforms the 'results' array into a date-keyed object array
 const transformResultsData = (resultsData) => {
   if (!resultsData || !Array.isArray(resultsData)) {
     return [];
@@ -54,36 +52,44 @@ const generateTableConfigs = (forecastResult) => {
   return configs;
 };
 
-export default function Page49m() {
+export default function PageKeys2() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
 
   const [keys, setKeys] = useState([]);
-  const [formData, setFormData] = useState({
-    df_key: 'ALL',
-    forecast_days: 7
+  const [defaultDates, setDefaultDates] = useState({
+    start_date: '',
+    end_date: ''
   });
+  const [selectedKey, setSelectedKey] = useState('DELUX_FARE');
   const [forecastResult, setForecastResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Fetch keys and set default dates on mount
   useEffect(() => {
     const fetchKeys = async () => {
       try {
-        const response = await fetch('/api/forecast');
-        if (!response.ok) throw new Error('Failed to fetch initial data for keys');
+        const response = await fetch('/api/keys2');
+        if (!response.ok) throw new Error('Failed to fetch keys');
         const data = await response.json();
         setKeys(data.keys || []);
+
+        // Store default dates but don't show them to the user
+        setDefaultDates({
+          start_date: data.default_start || '2023-12-01',
+          end_date: data.default_end || '2024-12-31'
+        });
       } catch (error) {
         console.error('Error fetching keys:', error);
+        setError(error.message);
       }
     };
     fetchKeys();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleKeyChange = (e) => {
+    setSelectedKey(e.target.value);
   };
 
   const handleSubmit = async (e) => {
@@ -92,13 +98,13 @@ export default function Page49m() {
     setForecastResult(null);
     setError(null);
     try {
-      const response = await fetch('/api/forecast', {
+      const response = await fetch('/api/forecast2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          start_date: "2023-12-01",
-          end_date: "2024-12-31"
+          key: selectedKey,
+          start: defaultDates.start_date,
+          end: defaultDates.end_date
         })
       });
       const result = await response.json();
@@ -109,7 +115,6 @@ export default function Page49m() {
     } catch (error) {
       console.error('Error fetching forecast:', error);
       setError(error.message || 'Failed to fetch forecast data');
-      setForecastResult(null);
     } finally {
       setLoading(false);
     }
@@ -129,34 +134,21 @@ export default function Page49m() {
       <main className={`transition-all duration-300 flex-grow p-6 bg-gray-50 overflow-y-auto ${sidebarOpen ? 'ml-0' : 'ml-0'}`}>
         {/* Forecast Form */}
         <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
-          <h1 className="text-xl font-bold mb-4 text-gray-800">Forecast Parameters for 49m Route</h1>
+          <h1 className="text-xl font-bold mb-4 text-gray-800">Forecast Parameters for Wrangal Uppal Route</h1>
           <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-4">
             <div className="min-w-[200px]">
               <label className="block text-sm font-medium text-gray-700 mb-1">Key</label>
               <select
-                name="df_key"
-                value={formData.df_key}
-                onChange={handleChange}
+                name="key"
+                value={selectedKey}
+                onChange={handleKeyChange}
                 className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
+                required
               >
-                <option value="ALL">ALL</option>
                 {keys.map(key => (
                   <option key={key} value={key}>{key}</option>
                 ))}
               </select>
-            </div>
-
-            <div className="min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Forecast Days</label>
-              <input
-                type="number"
-                name="forecast_days"
-                value={formData.forecast_days}
-                onChange={handleChange}
-                min="1"
-                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border p-2"
-                required
-              />
             </div>
 
             <div className="flex items-end">
@@ -199,14 +191,14 @@ export default function Page49m() {
             </div>
           )}
         </div>
-      </main>
 
-      {/* <div className="mt-6">Add commentMore actions
-        <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
-        <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
-          {JSON.stringify(forecastResult, null, 2)}
-        </pre>
-      </div> */}
+        {/* <div className="mt-6">Add commentMore actions
+          <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
+          <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
+            {JSON.stringify(forecastResult, null, 2)}
+          </pre>
+        </div> */}
+      </main>
     </div>
   );
 }
