@@ -1,50 +1,66 @@
-// app/49m_route/page.js
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import DataTable from '../components/DataTable'; // Path should be relative to this file
-import Sidebar from '../components/Sidebar';   // Assuming Sidebar is in app/components/Sidebar.js
+import DataTable from '../components/DataTable';
+import Sidebar from '../components/Sidebar';
 
-// This function transforms the 'results' array into a date-keyed object array
 const transformResultsData = (resultsData) => {
-  if (!resultsData || !Array.isArray(resultsData)) {
-    return [];
-  }
+  if (!resultsData || !Array.isArray(resultsData)) return [];
+
   const dataByDate = {};
   resultsData.forEach(item => {
     const key = item.key;
     if (!item.table || !Array.isArray(item.table)) return;
     item.table.forEach(row => {
       const date = row["Date"];
-      const passengers = row["No Of Passengers"]; // Key from your JSON example
+      const passengers = row["No Of Passengers"];
       if (!dataByDate[date]) {
         dataByDate[date] = { "Date": date };
       }
       dataByDate[date][key] = passengers;
     });
   });
+
   const transformedArray = Object.values(dataByDate);
   transformedArray.sort((a, b) => new Date(a.Date) - new Date(b.Date));
   return transformedArray;
 };
 
-// Helper function to generate table configurations dynamically
-const generateTableConfigs = (forecastResult) => {
+const generateTableConfigs = (forecastResult, df_key) => {
   if (!forecastResult) return [];
-  const configs = [];
 
+  // Define the tables we want to show when "ALL" is selected
+  const desiredTablesForAll = [
+    "combined_table",
+    "grouped_results_by_prefix_table",
+    "grouped_summary_table",
+    "results"
+  ];
+
+  const configs = [];
+  
+  // Always process the "results" table if it exists
+  if (forecastResult.results && (df_key === "ALL" || desiredTablesForAll.includes("results"))) {
+    const transformedData = transformResultsData(forecastResult.results);
+    if (transformedData.length > 0) {
+      configs.push({ id: "results", title: "results", data: transformedData });
+    }
+  }
+
+  // Process other tables based on whether ALL is selected or not
   Object.entries(forecastResult).forEach(([key, value]) => {
-    if (key === "results") {
-      const transformedData = transformResultsData(value);
-      if (transformedData && transformedData.length > 0) {
-        configs.push({ id: key, title: key, data: transformedData });
-      }
-    } else if (Array.isArray(value) && value.every(item => typeof item === 'object' && item !== null)) {
+    // Skip results as we already processed it
+    if (key === "results") return;
+    
+    // If ALL is selected, only include desired tables
+    if (df_key === "ALL" && !desiredTablesForAll.includes(key)) return;
+    
+    if (Array.isArray(value) && value.every(item => typeof item === 'object' && item !== null)) {
       if (value.length > 0) {
         configs.push({ id: key, title: key, data: value });
       }
-    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    } else if (typeof value === 'object' && value !== null) {
       Object.entries(value).forEach(([subKey, subValue]) => {
-        if (Array.isArray(subValue) && subValue.every(item => typeof item === 'object' && item !== null)) {
+        if (Array.isArray(subValue) && subValue.every(item => typeof item === 'object')) {
           if (subValue.length > 0) {
             configs.push({ id: `${key}-${subKey}`, title: `${key} - ${subKey}`, data: subValue });
           }
@@ -52,10 +68,14 @@ const generateTableConfigs = (forecastResult) => {
       });
     }
   });
+
   return configs;
 };
 
 export default function Page49m() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const toggleSidebar = () => setSidebarOpen(prev => !prev);
+
   const [keys, setKeys] = useState([]);
   const [formData, setFormData] = useState({
     df_key: 'ALL',
@@ -114,21 +134,22 @@ export default function Page49m() {
   };
 
   const tableConfigs = useMemo(() => {
-    if (forecastResult) {
-      return generateTableConfigs(forecastResult);
-    }
-    return [];
-  }, [forecastResult]);
+    return generateTableConfigs(forecastResult, formData.df_key);
+  }, [forecastResult, formData.df_key]);
 
   return (
-    <div className="flex min-h-screen bg-gray-100"> {/* Overall page container: flex row, min full height, light gray background */}
-      <Sidebar /> {/* Your Sidebar component. It should have its own width defined, e.g., w-64 */}
+    <div className="flex min-h-screen bg-gray-100">
+      <Sidebar sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
-      {/* Main content area */}
-      <main className="flex-grow p-6 flex flex-col bg-gray-50 overflow-y-auto"> {/* Takes remaining width, has padding, vertical flex for its children, slightly darker bg, and vertical scroll if needed */}
-        
-        {/* Horizontal Nav Bar Style Form */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6 flex-shrink-0"> {/* Form container should not shrink */}
+      <main className="flex-grow p-6 flex flex-col bg-gray-50 overflow-y-auto">
+        <button
+          className="mb-4 self-start px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
+          onClick={toggleSidebar}
+        >
+          {sidebarOpen ? 'Hide Menu' : 'Show Menu'}
+        </button>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border mb-6 flex-shrink-0">
           <h1 className="text-xl font-bold mb-4 text-gray-800">Forecast Parameters for 49m Route</h1>
           <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-4">
             <div className="min-w-[200px]">
@@ -171,8 +192,7 @@ export default function Page49m() {
           </form>
         </div>
 
-        {/* Results Section */}
-        <div className="flex-grow"> {/* Results container can grow to fill available vertical space in main content area */}
+        <div className="flex-grow">
           <h2 className="text-xl font-bold mb-6 text-gray-800">Forecast Results</h2>
 
           {loading && (
@@ -200,14 +220,6 @@ export default function Page49m() {
             </div>
           )}
         </div>
-        {/* Optional Raw JSON display - kept commented out
-        <div className="mt-6 flex-shrink-0">
-           <h3 className="text-lg font-medium mb-2">Raw JSON</h3>
-           <pre className="p-4 rounded-md overflow-x-auto text-sm bg-gray-800 text-white">
-             {JSON.stringify(forecastResult, null, 2)}
-           </pre>
-        </div>
-        */}
       </main>
     </div>
   );
