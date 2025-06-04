@@ -25,17 +25,36 @@ const transformResultsData = (resultsData) => {
   return transformedArray;
 };
 
-const generateTableConfigs = (forecastResult) => {
+const generateTableConfigs = (forecastResult, df_key) => {
   if (!forecastResult) return [];
 
+  // Tables to show when "ALL" is selected
+  const desiredTablesForAll = [
+    "Passengers_Information(For Next 7 Days)",
+    "Passengers_Service_Type_Buses",
+    "Passengers_Ticket_Type",
+    "results"
+  ];
+
   const configs = [];
+
+  // Always process the "results" table if it exists
+  if (forecastResult.results && (df_key === "ALL" || desiredTablesForAll.includes("results"))) {
+    const transformedData = transformResultsData(forecastResult.results);
+    if (transformedData.length > 0) {
+      configs.push({ id: "results", title: "results", data: transformedData });
+    }
+  }
+
+  // Process other tables based on whether ALL is selected or not
   Object.entries(forecastResult).forEach(([key, value]) => {
-    if (key === "results") {
-      const transformedData = transformResultsData(value);
-      if (transformedData.length > 0) {
-        configs.push({ id: key, title: key, data: transformedData });
-      }
-    } else if (Array.isArray(value) && value.every(item => typeof item === 'object' && item !== null)) {
+    // Skip results as we already processed it
+    if (key === "results") return;
+
+    // If ALL is selected, only include desired tables
+    if (df_key === "ALL" && !desiredTablesForAll.includes(key)) return;
+
+    if (Array.isArray(value) && value.every(item => typeof item === 'object' && item !== null)) {
       if (value.length > 0) {
         configs.push({ id: key, title: key, data: value });
       }
@@ -49,6 +68,7 @@ const generateTableConfigs = (forecastResult) => {
       });
     }
   });
+
   return configs;
 };
 
@@ -103,7 +123,7 @@ export default function Page10m() {
     }
   };
 
-  const tableConfigs = useMemo(() => generateTableConfigs(forecastResult), [forecastResult]);
+  const tableConfigs = useMemo(() => generateTableConfigs(forecastResult, formData.df_key), [forecastResult, formData.df_key]);
 
   return (
     <div className="flex min-h-screen bg-gray-100">
