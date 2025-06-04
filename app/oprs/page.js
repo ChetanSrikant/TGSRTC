@@ -28,27 +28,42 @@ const transformResultsData = (resultsData) => {
 const generateTableConfigs = (forecastResult) => {
   if (!forecastResult) return [];
 
+  const desiredTables = [
+    "Passengers_Information(For Next 7 Days)",
+    "Passengers_Service_Type_Buses",
+    "Passengers_Ticket_Type",
+    "results"
+  ];
+
   const configs = [];
+
+  // Handle the "results" table first
+  if (forecastResult.results && desiredTables.includes("results")) {
+    const transformedData = transformResultsData(forecastResult.results);
+    if (transformedData.length > 0) {
+      configs.push({ id: "results", title: "results", data: transformedData });
+    }
+  }
+
+  // Handle other desired tables
   Object.entries(forecastResult).forEach(([key, value]) => {
-    if (key === "results") {
-      const transformedData = transformResultsData(value);
-      if (transformedData.length > 0) {
-        configs.push({ id: key, title: key, data: transformedData });
-      }
-    } else if (Array.isArray(value) && value.every(item => typeof item === 'object' && item !== null)) {
-      if (value.length > 0) {
-        configs.push({ id: key, title: key, data: value });
-      }
-    } else if (typeof value === 'object' && value !== null) {
-      Object.entries(value).forEach(([subKey, subValue]) => {
-        if (Array.isArray(subValue) && subValue.every(item => typeof item === 'object')) {
-          if (subValue.length > 0) {
-            configs.push({ id: `${key}-${subKey}`, title: `${key} - ${subKey}`, data: subValue });
-          }
+    if (desiredTables.includes(key) && key !== "results") {
+      if (Array.isArray(value) && value.every(item => typeof item === 'object' && item !== null)) {
+        if (value.length > 0) {
+          configs.push({ id: key, title: key, data: value });
         }
-      });
+      } else if (typeof value === 'object' && value !== null) {
+        Object.entries(value).forEach(([subKey, subValue]) => {
+          if (Array.isArray(subValue) && subValue.every(item => typeof item === 'object')) {
+            if (subValue.length > 0) {
+              configs.push({ id: `${key}-${subKey}`, title: `${key} - ${subKey}`, data: subValue });
+            }
+          }
+        });
+      }
     }
   });
+
   return configs;
 };
 
